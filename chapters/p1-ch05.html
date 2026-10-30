@@ -683,6 +683,9 @@ mark.nu-mark:hover, mark.nu-mark.nu-active { background: var(--nu-highlight); }
   color: var(--nu-ink); background: var(--nu-paper); box-shadow: 0 3px 12px rgba(0,0,0,.10); cursor: pointer;
 }
 .nu-sel-btn:hover { color: var(--nu-accent); }
+/* màn hình cảm ứng: nút đứng yên ở đáy (hoặc đỉnh) màn hình, tránh bảng «Sao chép / Tìm kiếm»
+   của trình duyệt, vốn hiện sát ngay trên hoặc dưới đoạn chữ được chọn */
+.nu-sel-btn.fixed { position: fixed; left: 50% !important; padding: 0.55rem 1.3rem; font-size: 0.85rem; }
 
 /* khung bình luận: trượt ra từ phải (máy tính), kéo lên từ dưới (điện thoại) */
 .nu-panel {
@@ -1228,8 +1231,22 @@ body.nu-c-on .nu-dock .on-only { display: inline; }
       document.body.appendChild(selBtn);
     }
     var touch = matchMedia("(hover: none)").matches;
-    selBtn.style.left = (s.rect.left + s.rect.width / 2 + window.scrollX) + "px";
-    selBtn.style.top = (touch ? s.rect.bottom + window.scrollY + 12 : s.rect.top + window.scrollY - 40) + "px";
+    selBtn.classList.toggle("fixed", touch);
+    if (touch) {
+      // Đáy màn hình, ngay trên thanh điều khiển; nếu chữ được chọn nằm sát đáy thì lên đỉnh, dưới thanh tiêu đề.
+      var H = window.innerHeight, dock = document.querySelector(".nu-dock"), gap = 12;
+      var dTop = dock && !document.body.classList.contains("nu-dock-hide") ? dock.getBoundingClientRect().top : H;
+      if (s.rect.bottom < H * 0.7) { selBtn.style.top = ""; selBtn.style.bottom = (H - dTop + gap) + "px"; }
+      else {
+        var hdr = document.querySelector("#quarto-header, .quarto-secondary-nav");
+        var hb = hdr ? Math.max(0, hdr.getBoundingClientRect().bottom) : 0;
+        selBtn.style.bottom = ""; selBtn.style.top = (hb + gap) + "px";
+      }
+    } else {
+      selBtn.style.bottom = "";
+      selBtn.style.left = (s.rect.left + s.rect.width / 2 + window.scrollX) + "px";
+      selBtn.style.top = (s.rect.top + window.scrollY - 40) + "px";
+    }
     selBtn.style.display = "block";
   }
   var selTimer;
