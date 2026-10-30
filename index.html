@@ -409,7 +409,7 @@ Dịch: Claude (Anthropic) và GPT (OpenAI)<br>
 </div>
 </div>
 <div class="nu-cover-note">
-<p>Bản dịch dịch trực tiếp từ tiếng Nga, theo văn bản <em>Собрание сочинений в 15 томах</em>, t. 4 (Л.: Наука, 1989). Mỗi đoạn có một mã § ở lề trái, khớp với cách chia đoạn của bản Nga; bấm vào mã để lấy liên kết tới đúng đoạn đó. Thanh nhỏ ở đáy màn hình có <strong>Aa</strong> để đổi cỡ chữ và <strong>Ру | Vi</strong> để đặt bản Nga cạnh bản dịch; trên điện thoại, thanh này còn có nút sang chương trước và sau. Trên máy tính: phím ← → để sang chương trước hoặc sau; Space để đọc tiếp một trang, Shift+Space để lùi lại.</p>
+<p>Bản dịch dịch trực tiếp từ tiếng Nga, theo văn bản <em>Собрание сочинений в 15 томах</em>, t. 4 (Л.: Наука, 1989). Mỗi đoạn có một mã § ở lề trái, khớp với cách chia đoạn của bản Nga; bấm vào mã để lấy liên kết tới đúng đoạn đó. Thanh nhỏ ở đáy màn hình có <strong>Aa</strong> để đổi cỡ chữ và chọn nền sáng hay tối, <strong>Ру | Vi</strong> để đặt bản Nga cạnh bản dịch; trên điện thoại, thanh này còn có nút sang chương trước và sau. Trên máy tính: phím ← → để sang chương trước hoặc sau; Space để đọc tiếp một trang, Shift+Space để lùi lại.</p>
 </div>
 
 
@@ -452,7 +452,8 @@ Dịch: Claude (Anthropic) và GPT (OpenAI)<br>
      - Điện thoại: thanh mỏng ngang đáy màn hình: «‹ III   Aa · Ру | Vi · [bình luận]   V ›»;
        ẩn khi cuộn xuống đọc, hiện lại khi cuộn lên hoặc tới cuối chương.
      - Aa: cỡ chữ của sách, 5 mức, trình duyệt nhớ (localStorage «nu-fs»; áp dụng sớm
-       trong fs-head.html để không bị nháy).
+       trong fs-head.html để không bị nháy); hàng dưới «Sáng · Tối» đổi nền sáng/tối
+       (gọi nút sáng/tối của Quarto, nên cùng lựa chọn với nút ở thanh bên).
      comments.html gắn các nút bình luận vào chỗ .slot-c.
      ───────────────────────────────────────────────────────────── -->
 <style>
@@ -479,9 +480,9 @@ html[data-fs="3"]  main.content { font-size: 1.4rem; }
 .nu-dock .nu-chap { display: none; }
 body.nu-docked #title-block-header { margin-bottom: 2.4rem; }   /* chỗ trống trước đây của nút song ngữ */
 
-/* bảng cỡ chữ */
+/* bảng Aa: cỡ chữ, nền sáng/tối */
 .nu-fs-pop {
-  position: fixed; z-index: 1045; display: none; align-items: baseline; gap: 1rem;
+  position: fixed; z-index: 1045; display: none; flex-direction: column; align-items: center; gap: 0.45rem;
   padding: 0.5rem 0.9rem; background: var(--nu-paper); border: 1px solid var(--nu-rule);
   box-shadow: 0 4px 18px rgba(0,0,0,.08);
   font-family: var(--nu-sans); font-weight: 300; font-size: 0.8rem; color: var(--nu-muted);
@@ -492,6 +493,11 @@ body.nu-docked #title-block-header { margin-bottom: 2.4rem; }   /* chỗ trống
 .nu-fs-pop .small { font-size: 0.75rem; }
 .nu-fs-pop .big { font-size: 1.05rem; }
 .nu-fs-pop .val { min-width: 2.8rem; text-align: center; font-variant-numeric: tabular-nums; }
+.nu-fs-pop .row { display: flex; align-items: baseline; gap: 1rem; }
+.nu-fs-pop .theme { gap: 0.5rem; padding-top: 0.45rem; border-top: 1px solid var(--nu-rule); align-self: stretch; justify-content: center; color: var(--nu-faint); }
+.nu-fs-pop .theme button { color: var(--nu-muted); }
+.nu-fs-pop .theme button:hover { color: var(--nu-accent); }
+.nu-fs-pop .theme button[aria-pressed="true"] { color: var(--nu-ink); text-decoration: underline; text-decoration-color: var(--nu-accent); text-underline-offset: 0.3em; cursor: default; }
 
 @media (max-width: 767.98px) {
   .nu-dock {
@@ -520,7 +526,7 @@ body.nu-docked #title-block-header { margin-bottom: 2.4rem; }   /* chỗ trống
   var dock = el("div", "nu-dock");
   var prev = el("a", "nu-chap prev off", "‹"), next = el("a", "nu-chap next off", "›");
   var mid = el("div", "mid");
-  var aa = el("button", "nu-aa", "Aa"); aa.type = "button"; aa.title = "Cỡ chữ"; aa.setAttribute("aria-label", "Cỡ chữ");
+  var aa = el("button", "nu-aa", "Aa"); aa.type = "button"; aa.title = "Cỡ chữ, nền sáng/tối"; aa.setAttribute("aria-label", "Cỡ chữ, nền sáng/tối");
   mid.appendChild(aa);
   var bi = document.querySelector(".bilingual-toggle");
   if (bi) { mid.appendChild(el("span", null, "·")); mid.appendChild(bi); }
@@ -550,10 +556,11 @@ body.nu-docked #title-block-header { margin-bottom: 2.4rem; }   /* chỗ trống
   // cỡ chữ
   var STEPS = ["-1", "0", "1", "2", "3"], LABEL = { "-1": "90%", "0": "100%", "1": "112%", "2": "125%", "3": "140%" };
   var cur = STEPS.indexOf(store("nu-fs") || "0"); if (cur < 0) cur = 1;
-  var pop = el("div", "nu-fs-pop"); pop.setAttribute("role", "dialog"); pop.setAttribute("aria-label", "Cỡ chữ");
+  var pop = el("div", "nu-fs-pop"); pop.setAttribute("role", "dialog"); pop.setAttribute("aria-label", "Cỡ chữ, nền sáng/tối");
   var minus = el("button", "small", "A−"), val = el("span", "val"), plus = el("button", "big", "A+");
   minus.type = plus.type = "button"; minus.setAttribute("aria-label", "Chữ nhỏ hơn"); plus.setAttribute("aria-label", "Chữ lớn hơn");
-  pop.appendChild(minus); pop.appendChild(val); pop.appendChild(plus); document.body.appendChild(pop);
+  var row1 = el("div", "row"); row1.appendChild(minus); row1.appendChild(val); row1.appendChild(plus);
+  pop.appendChild(row1); document.body.appendChild(pop);
   function apply() {
     var v = STEPS[cur];
     if (v === "0") document.documentElement.removeAttribute("data-fs"); else document.documentElement.setAttribute("data-fs", v);
@@ -569,6 +576,22 @@ body.nu-docked #title-block-header { margin-bottom: 2.4rem; }   /* chỗ trống
   minus.addEventListener("click", function () { if (cur > 0) keepPlace(function () { cur--; apply(); }); });
   plus.addEventListener("click", function () { if (cur < STEPS.length - 1) keepPlace(function () { cur++; apply(); }); });
   apply();
+
+  // nền sáng / tối: dùng chính cơ chế của Quarto (lưu ở «quarto-color-scheme»)
+  if (typeof window.quartoToggleColorScheme === "function") {
+    var row2 = el("div", "row theme");
+    var light = el("button", null, "Sáng"), dark = el("button", null, "Tối");
+    light.type = dark.type = "button";
+    row2.appendChild(light); row2.appendChild(el("span", null, "·")); row2.appendChild(dark);
+    pop.appendChild(row2);
+    var isDark = function () { return document.body.classList.contains("quarto-dark"); };
+    var mark = function () { light.setAttribute("aria-pressed", String(!isDark())); dark.setAttribute("aria-pressed", String(isDark())); };
+    var want = function (d) { if (isDark() !== d) window.quartoToggleColorScheme(); mark(); };
+    light.addEventListener("click", function () { want(false); });
+    dark.addEventListener("click", function () { want(true); });
+    new MutationObserver(mark).observe(document.body, { attributes: true, attributeFilter: ["class"] });   // cả khi bấm nút ở thanh bên
+    mark();
+  }
   aa.addEventListener("click", function (e) {
     e.stopPropagation();
     if (pop.classList.toggle("open")) {
