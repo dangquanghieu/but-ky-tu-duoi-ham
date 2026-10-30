@@ -80,6 +80,11 @@ ul.task-list li input[type="checkbox"] {
 }</script>
 <style>html{ scroll-behavior: smooth; }</style>
 <script>
+// Trên web, luôn dùng https: Worker bình luận chỉ nhận yêu cầu từ https://dangquanghieu.com.
+// (Chỉ áp dụng cho tên miền thật; xem thử trên máy hay qua mạng nội bộ thì không chuyển.)
+if (location.protocol === "http:" && location.hostname === "dangquanghieu.com") {
+  location.replace("https://" + location.host + location.pathname + location.search + location.hash);
+}
 // Áp dụng cỡ chữ đã chọn (dock.html) trước khi trang hiện ra, để không bị nháy.
 try { var f = localStorage.getItem("nu-fs"); if (f && f !== "0") document.documentElement.setAttribute("data-fs", f); } catch (e) {}
 </script>
