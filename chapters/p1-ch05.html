@@ -80,6 +80,10 @@ ul.task-list li input[type="checkbox"] {
   }
 }</script>
 <style>html{ scroll-behavior: smooth; }</style>
+<script>
+// Áp dụng cỡ chữ đã chọn (dock.html) trước khi trang hiện ra, để không bị nháy.
+try { var f = localStorage.getItem("nu-fs"); if (f && f !== "0") document.documentElement.setAttribute("data-fs", f); } catch (e) {}
+</script>
 
 
 <link rel="stylesheet" href="../styles.css">
@@ -441,6 +445,152 @@ ul.task-list li input[type="checkbox"] {
 })();
 </script>
 <!-- ─────────────────────────────────────────────────────────────
+     Thanh điều khiển của trang đọc (chỉ ở trang có đoạn văn §).
+     - Máy tính: thanh nhỏ ở góc dưới bên phải: «Aa · Ру | Vi · [bình luận]».
+       (Chuyển chương bằng mũi tên ở mép màn hình và phím ← →, xem nav.html.)
+     - Điện thoại: thanh mỏng ngang đáy màn hình: «‹ III   Aa · Ру | Vi · [bình luận]   V ›»;
+       ẩn khi cuộn xuống đọc, hiện lại khi cuộn lên hoặc tới cuối chương.
+     - Aa: cỡ chữ của sách, 5 mức, trình duyệt nhớ (localStorage «nu-fs»; áp dụng sớm
+       trong fs-head.html để không bị nháy).
+     comments.html gắn các nút bình luận vào chỗ .slot-c.
+     ───────────────────────────────────────────────────────────── -->
+<style>
+/* cỡ chữ của sách (chỉ phần nội dung, không đổi khung bình luận hay các nút) */
+html[data-fs="-1"] main.content { font-size: 0.9rem; }
+html[data-fs="1"]  main.content { font-size: 1.12rem; }
+html[data-fs="2"]  main.content { font-size: 1.25rem; }
+html[data-fs="3"]  main.content { font-size: 1.4rem; }
+
+.nu-dock {
+  position: fixed; right: 1.3rem; bottom: 1.1rem; z-index: 1040;
+  display: flex; align-items: baseline; gap: 0.6rem;
+  padding: 0.35rem 0.7rem;
+  font-family: var(--nu-sans); font-weight: 300; font-size: 0.72rem; letter-spacing: 0.06em;
+  color: var(--nu-faint); background: var(--nu-paper);
+  transition: transform 0.25s ease;
+}
+.nu-dock .mid { display: flex; align-items: baseline; gap: 0.6rem; }
+.nu-dock, .nu-dock * { white-space: nowrap; }
+.nu-dock .slot-c { display: contents; }
+.nu-dock button, .nu-dock a { font: inherit; letter-spacing: inherit; color: var(--nu-faint); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: none; }
+.nu-dock button:hover, .nu-dock a:hover { color: var(--nu-accent); }
+.nu-dock .bilingual-toggle { margin: 0; display: inline; }
+.nu-dock .nu-chap { display: none; }
+body.nu-docked #title-block-header { margin-bottom: 2.4rem; }   /* chỗ trống trước đây của nút song ngữ */
+
+/* bảng cỡ chữ */
+.nu-fs-pop {
+  position: fixed; z-index: 1045; display: none; align-items: baseline; gap: 1rem;
+  padding: 0.5rem 0.9rem; background: var(--nu-paper); border: 1px solid var(--nu-rule);
+  box-shadow: 0 4px 18px rgba(0,0,0,.08);
+  font-family: var(--nu-sans); font-weight: 300; font-size: 0.8rem; color: var(--nu-muted);
+}
+.nu-fs-pop.open { display: flex; }
+.nu-fs-pop button { font: inherit; background: none; border: 0; padding: 0.1rem 0.3rem; cursor: pointer; color: var(--nu-ink); }
+.nu-fs-pop button:disabled { color: var(--nu-faint); cursor: default; }
+.nu-fs-pop .small { font-size: 0.75rem; }
+.nu-fs-pop .big { font-size: 1.05rem; }
+.nu-fs-pop .val { min-width: 2.8rem; text-align: center; font-variant-numeric: tabular-nums; }
+
+@media (max-width: 767.98px) {
+  .nu-dock {
+    left: 0; right: 0; bottom: 0; justify-content: space-between; align-items: center;
+    padding: 0.6rem 1rem calc(0.6rem + env(safe-area-inset-bottom));
+    border-top: 1px solid var(--nu-rule); font-size: 0.78rem; letter-spacing: 0.03em;
+  }
+  .nu-dock .nu-chap { display: inline; color: var(--nu-muted); min-width: 3.2rem; }
+  .nu-dock .nu-chap.next { text-align: right; }
+  .nu-dock .nu-chap.off { visibility: hidden; }
+  .nu-dock .mid { gap: 0.45rem; }
+  .nu-dock .long { display: none; }
+  body.nu-c-on .nu-dock .nu-chap { min-width: 1.4rem; }   /* chế độ bình luận: chỉ còn mũi tên */
+  body.nu-c-on .nu-dock .nu-chap .lbl { display: none; }
+  body.nu-dock-hide .nu-dock { transform: translateY(100%); }   /* ẩn khi cuộn xuống đọc */
+  main.content { padding-bottom: 3rem; }                          /* chừa chỗ cho thanh đáy */
+}
+</style>
+
+<script>
+(function () {
+  if (!document.querySelector("main .para[id]")) return;   // chỉ ở trang đọc
+  function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; } }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+
+  var dock = el("div", "nu-dock");
+  var prev = el("a", "nu-chap prev off", "‹"), next = el("a", "nu-chap next off", "›");
+  var mid = el("div", "mid");
+  var aa = el("button", "nu-aa", "Aa"); aa.type = "button"; aa.title = "Cỡ chữ"; aa.setAttribute("aria-label", "Cỡ chữ");
+  mid.appendChild(aa);
+  var bi = document.querySelector(".bilingual-toggle");
+  if (bi) { mid.appendChild(el("span", null, "·")); mid.appendChild(bi); }
+  var slot = el("span", "slot-c"); mid.appendChild(slot);
+  dock.appendChild(prev); dock.appendChild(mid); dock.appendChild(next);
+  document.body.appendChild(dock);
+  document.body.classList.add("nu-docked");
+
+  // chương trước / sau (điện thoại); liên kết cuối trang nằm sau đoạn mã này nên chờ trang dựng xong
+  function chapters() {
+    [["previous", prev, "‹ "], ["next", next, " ›"]].forEach(function (x) {
+      var a = document.querySelector(".nav-page-" + x[0] + " a");
+      if (!a) return;
+      var name = (a.querySelector(".chapter-title") || a).textContent.trim();
+      var short = name.length <= 6 ? name : "";
+      x[1].href = a.getAttribute("href");
+      x[1].innerHTML = "";
+      var lbl = el("span", "lbl", short);
+      if (x[0] === "previous") { x[1].appendChild(document.createTextNode("‹ ")); x[1].appendChild(lbl); }
+      else { x[1].appendChild(lbl); x[1].appendChild(document.createTextNode(" ›")); }
+      x[1].setAttribute("aria-label", (x[0] === "previous" ? "Chương trước: " : "Chương sau: ") + name);
+      x[1].classList.remove("off");
+    });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", chapters); else chapters();
+
+  // cỡ chữ
+  var STEPS = ["-1", "0", "1", "2", "3"], LABEL = { "-1": "90%", "0": "100%", "1": "112%", "2": "125%", "3": "140%" };
+  var cur = STEPS.indexOf(store("nu-fs") || "0"); if (cur < 0) cur = 1;
+  var pop = el("div", "nu-fs-pop"); pop.setAttribute("role", "dialog"); pop.setAttribute("aria-label", "Cỡ chữ");
+  var minus = el("button", "small", "A−"), val = el("span", "val"), plus = el("button", "big", "A+");
+  minus.type = plus.type = "button"; minus.setAttribute("aria-label", "Chữ nhỏ hơn"); plus.setAttribute("aria-label", "Chữ lớn hơn");
+  pop.appendChild(minus); pop.appendChild(val); pop.appendChild(plus); document.body.appendChild(pop);
+  function apply() {
+    var v = STEPS[cur];
+    if (v === "0") document.documentElement.removeAttribute("data-fs"); else document.documentElement.setAttribute("data-fs", v);
+    store("nu-fs", v); val.textContent = LABEL[v];
+    minus.disabled = cur === 0; plus.disabled = cur === STEPS.length - 1;
+  }
+  function keepPlace(fn) {   // giữ đoạn đang đọc ở nguyên chỗ khi chữ to/nhỏ lại
+    var ps = document.querySelectorAll("main .para[id]"), anchor = null, off = 0;
+    for (var i = 0; i < ps.length; i++) { var r = ps[i].getBoundingClientRect(); if (r.bottom > 0) { anchor = ps[i]; off = r.top; break; } }
+    fn();
+    if (anchor) window.scrollBy(0, anchor.getBoundingClientRect().top - off);
+  }
+  minus.addEventListener("click", function () { if (cur > 0) keepPlace(function () { cur--; apply(); }); });
+  plus.addEventListener("click", function () { if (cur < STEPS.length - 1) keepPlace(function () { cur++; apply(); }); });
+  apply();
+  aa.addEventListener("click", function (e) {
+    e.stopPropagation();
+    if (pop.classList.toggle("open")) {
+      var r = aa.getBoundingClientRect(), w = pop.offsetWidth;
+      pop.style.left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left + r.width / 2 - w / 2)) + "px";
+      pop.style.bottom = (window.innerHeight - r.top + 10) + "px";
+    }
+  });
+  document.addEventListener("pointerdown", function (e) { if (!pop.contains(e.target) && e.target !== aa) pop.classList.remove("open"); });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") pop.classList.remove("open"); });
+
+  // điện thoại: thanh ẩn khi cuộn xuống, hiện lại khi cuộn lên hoặc tới cuối trang
+  var lastY = window.scrollY;
+  window.addEventListener("scroll", function () {
+    var y = window.scrollY, end = y + window.innerHeight >= document.documentElement.scrollHeight - 40;
+    if (Math.abs(y - lastY) < 8) return;
+    if (document.body.classList.contains("nu-panel-open")) { lastY = y; return; }   // trang tự cuộn khi duyệt bình luận
+    document.body.classList.toggle("nu-dock-hide", y > lastY && y > 80 && !end && !pop.classList.contains("open"));
+    lastY = y;
+  }, { passive: true });
+})();
+</script>
+<!-- ─────────────────────────────────────────────────────────────
      Bình luận ẩn danh gắn vào chữ (chỉ bản Việt).
      API: comments-worker/ (Cloudflare Worker + D1).
 
@@ -465,19 +615,6 @@ ul.task-list li input[type="checkbox"] {
      Toàn bộ giao diện bình luận nằm trong file này (CSS + JS).
      ───────────────────────────────────────────────────────────── -->
 <style>
-/* thanh nhỏ cố định ở góc dưới bên phải */
-.nu-dock {
-  position: fixed; right: 1.3rem; bottom: 1.1rem; z-index: 1040;
-  display: flex; align-items: baseline; gap: 0.6rem;
-  padding: 0.35rem 0.7rem;
-  font-family: var(--nu-sans); font-weight: 300; font-size: 0.72rem; letter-spacing: 0.06em;
-  color: var(--nu-faint); background: var(--nu-paper);
-  transition: transform 0.25s ease;
-}
-.nu-dock:hover .bilingual-toggle:not([aria-pressed="true"]),
-.nu-dock:hover .nu-c-toggle:not([aria-pressed="true"]) { color: var(--nu-muted); }
-.nu-dock .bilingual-toggle { margin: 0; display: inline; }
-body.nu-docked #title-block-header { margin-bottom: 2.4rem; }   /* chỗ trống trước đây của nút song ngữ */
 .nu-c-toggle {
   font: inherit; letter-spacing: inherit; color: var(--nu-faint);
   background: none; border: 0; padding: 0; cursor: pointer;
@@ -488,10 +625,7 @@ body.nu-docked #title-block-header { margin-bottom: 2.4rem; }   /* chỗ trống
   text-decoration-color: var(--nu-accent); text-underline-offset: 4px;
 }
 body.nu-panel-open .nu-dock { display: none; }
-@media (max-width: 767.98px) {
-  .nu-dock { right: 0.8rem; bottom: 0.8rem; border: 1px solid var(--nu-rule); }
-  body.nu-dock-hide .nu-dock { transform: translateY(calc(100% + 1.2rem)); }   /* ẩn khi cuộn xuống đọc */
-}
+.nu-dock .nu-c-toggle:not([aria-pressed="true"]):hover { color: var(--nu-accent); }
 
 /* chữ đã có bình luận: gạch chân mờ, không tô nền */
 mark.nu-mark {
@@ -727,27 +861,19 @@ body.nu-c-on .nu-dock .on-only { display: inline; }
   ownerHash();
   window.addEventListener("hashchange", ownerHash);
 
-  // ── Thanh nhỏ ở góc: «Ру | Vi · Bình luận» ──
-  var dock = el("div", "nu-dock");
-  var bi = document.querySelector(".bilingual-toggle");
-  if (bi) { dock.appendChild(bi); dock.appendChild(el("span", null, "·")); }
-  // [Ру | Vi] · [Ẩn bình luận] · [Bình luận N | Tiếp ↓ k/N]  — nút chính luôn ở ngoài cùng bên phải
-  var hideBtn = el("button", "nu-c-toggle on-only", "Ẩn bình luận"); hideBtn.type = "button";
+  // ── Nút bình luận trên thanh điều khiển (dock.html dựng thanh) ──
+  // … · [Ẩn bình luận] · [Bình luận N | Tiếp ↓ k/N]  — nút chính luôn ở cuối
+  var slot = document.querySelector(".nu-dock .slot-c");
+  if (!slot) {   // phòng khi thiếu dock.html: tự dựng một thanh tối giản
+    var d = el("div", "nu-dock"); slot = el("span", "slot-c"); d.appendChild(slot); document.body.appendChild(d);
+  }
+  var hideBtn = el("button", "nu-c-toggle on-only"); hideBtn.type = "button";
+  hideBtn.innerHTML = 'Ẩn<span class="long"> bình luận</span>';   // điện thoại: chỉ «Ẩn»
   var tg = el("button", "nu-c-toggle", "Bình luận"); tg.type = "button";
-  dock.appendChild(hideBtn); dock.appendChild(el("span", "on-only", "·")); dock.appendChild(tg);
+  slot.appendChild(el("span", null, "·")); slot.appendChild(hideBtn); slot.appendChild(el("span", "on-only", "·")); slot.appendChild(tg);
   var HOVER = matchMedia("(hover: hover)").matches;
   hideBtn.title = "Về chế độ đọc" + (HOVER ? " (Esc)" : "");
   hideBtn.addEventListener("click", function () { setMode("off"); });
-  document.body.appendChild(dock);
-  document.body.classList.add("nu-docked");
-  // điện thoại: thanh góc ẩn khi cuộn xuống, hiện lại khi cuộn lên hoặc tới cuối trang
-  var lastY = window.scrollY;
-  window.addEventListener("scroll", function () {
-    var y = window.scrollY, end = y + window.innerHeight >= document.documentElement.scrollHeight - 40;
-    if (Math.abs(y - lastY) < 8) return;
-    document.body.classList.toggle("nu-dock-hide", y > lastY && y > 80 && !end);
-    lastY = y;
-  }, { passive: true });
   tg.addEventListener("click", function () {
     if (mode === "on") return go(1);
     load().then(function () {
@@ -887,7 +1013,7 @@ body.nu-c-on .nu-dock .on-only { display: inline; }
     if (!document.body.classList.contains("nu-panel-open")) { if (mode === "off") { peek = false; clearMarks(); } return true; }
     var draft = !force && panel && Array.prototype.some.call(panel.querySelectorAll("textarea"), function (t) { return t.value.trim(); });
     if (draft && !confirm("Bỏ bình luận đang viết dở?")) return false;
-    document.body.classList.remove("nu-panel-open"); current = null; labels();
+    document.body.classList.remove("nu-panel-open", "nu-dock-hide"); current = null; labels();
     document.querySelectorAll(".nu-active").forEach(function (e) { e.classList.remove("nu-active"); });
     if (mode === "off") { peek = false; clearMarks(); }
     return true;
