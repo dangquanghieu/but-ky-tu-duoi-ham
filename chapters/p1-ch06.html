@@ -683,16 +683,17 @@ mark.nu-mark:hover, mark.nu-mark.nu-active { background: var(--nu-highlight); }
 }
 
 /* nút xuất hiện khi bôi đen chữ */
-.nu-sel-btn {
+.nu-sel-btn {   /* nền màu nhấn, chữ đậm: phải thấy ngay, kể cả khi người đọc không để ý */
   position: absolute; z-index: 1050; transform: translateX(-50%);
-  font-family: var(--nu-sans); font-weight: 400; font-size: 0.75rem; letter-spacing: 0.03em;
-  padding: 0.3rem 0.7rem; border: 1px solid var(--nu-rule);
-  color: var(--nu-ink); background: var(--nu-paper); box-shadow: 0 3px 12px rgba(0,0,0,.10); cursor: pointer;
+  font-family: var(--nu-sans); font-weight: 500; font-size: 0.9rem; letter-spacing: 0.02em; line-height: 1.2;
+  padding: 0.5rem 1.05rem; border: 0; border-radius: 3px;
+  color: var(--nu-paper); background: var(--nu-accent); box-shadow: 0 4px 16px rgba(0,0,0,.22); cursor: pointer;
 }
-.nu-sel-btn:hover { color: var(--nu-accent); }
+.nu-sel-btn::before { content: "✎ "; }
+.nu-sel-btn:hover { filter: brightness(1.08); }
 /* màn hình cảm ứng: nút đứng yên ở đáy (hoặc đỉnh) màn hình, tránh bảng «Sao chép / Tìm kiếm»
    của trình duyệt, vốn hiện sát ngay trên hoặc dưới đoạn chữ được chọn */
-.nu-sel-btn.fixed { position: fixed; left: 50% !important; padding: 0.55rem 1.3rem; font-size: 0.85rem; }
+.nu-sel-btn.fixed { position: fixed; left: 50% !important; padding: 0.8rem 1.8rem; font-size: 1.05rem; }
 
 /* khung bình luận: trượt ra từ phải (máy tính), kéo lên từ dưới (điện thoại) */
 .nu-panel {
@@ -706,8 +707,10 @@ mark.nu-mark:hover, mark.nu-mark.nu-active { background: var(--nu-highlight); }
 body.nu-panel-open .nu-panel { transform: none; }
 body.nu-panel-open .nu-edge { display: none; }   /* mũi tên chuyển chương không đè lên khung */
 @media (max-width: 767.98px) {
-  .nu-panel { top: auto; left: 0; width: 100vw; height: 78vh; border-left: 0; border-top: 1px solid var(--nu-rule);
+  .nu-panel { top: auto; left: 0; width: 100vw; height: 58vh; height: 58svh; border-left: 0; border-top: 1px solid var(--nu-rule);
               box-shadow: 0 -8px 28px rgba(0,0,0,.10); transform: translateY(105%); }
+  /* câu đang bàn phải hiện được phía trên khung, kể cả ở cuối chương: chừa chỗ để cuộn */
+  body.nu-panel-open main.content { padding-bottom: 58vh; padding-bottom: 58svh; }
 }
 
 /* Màn hình rộng (≥ 992px): khung không đè lên chữ mà nhường chỗ.
@@ -806,7 +809,7 @@ body.nu-c-on .nu-dock .on-only { display: inline; }
 .nu-foot .pos { color: var(--nu-faint); margin-left: 0.35rem; }
 .nu-foot.single .nav { visibility: hidden; }
 .nu-toast {
-  position: fixed; left: 50%; bottom: 3.6rem; transform: translateX(-50%); z-index: 1045;
+  position: fixed; left: 50%; bottom: 3.6rem; transform: translateX(-50%); z-index: 1070;
   max-width: min(30rem, calc(100vw - 2rem)); padding: 0.5rem 0.9rem;
   font-family: var(--nu-sans); font-weight: 300; font-size: 0.78rem; line-height: 1.5; text-align: center;
   color: var(--nu-ink); background: var(--nu-paper); border: 1px solid var(--nu-rule); box-shadow: 0 4px 18px rgba(0,0,0,.08);
@@ -990,6 +993,10 @@ body.nu-c-on .nu-dock .on-only { display: inline; }
   var toastEl, toastTimer;
   function toast(msg) {
     if (!toastEl) { toastEl = el("div", "nu-toast"); toastEl.setAttribute("role", "status"); document.body.appendChild(toastEl); }
+    // ngay trên thanh điều khiển (trên điện thoại thanh này cao hơn 3.6rem, nhất là trên iPhone)
+    var dock = document.querySelector(".nu-dock");
+    var dTop = dock && dock.getClientRects().length ? dock.getBoundingClientRect().top : window.innerHeight;   // offsetParent của phần tử fixed luôn là null
+    toastEl.style.bottom = Math.max(16, window.innerHeight - Math.min(dTop, window.innerHeight) + 12) + "px";
     toastEl.textContent = msg; toastEl.classList.remove("hide");
     clearTimeout(toastTimer); toastTimer = setTimeout(function () { toastEl.classList.add("hide"); }, 4500);
   }
@@ -1017,7 +1024,7 @@ body.nu-c-on .nu-dock .on-only { display: inline; }
     var rid = list[curIdx], t = threads[rid];
     var mk = document.querySelector('mark.nu-mark[data-root="' + rid + '"]') || document.getElementById(t.root.para);
     openPanel(t.root.para, rid);   // mở khung trước: bố cục đổi xong rồi mới cuộn tới
-    mk.scrollIntoView({ block: "center", behavior: "smooth" });
+    if (!MOBILE.matches) mk.scrollIntoView({ block: "center", behavior: "smooth" });
     mk.classList.add("nu-flash"); setTimeout(function () { mk.classList.remove("nu-flash"); }, 1400);
   }
   function labels() {
@@ -1123,6 +1130,25 @@ body.nu-c-on .nu-dock .on-only { display: inline; }
     requestAnimationFrame(function () { root.style.overflowAnchor = prev; });
   }
   // Trả về false nếu người đọc chọn giữ lại bản nháp
+  var MOBILE = matchMedia("(max-width: 767.98px)");
+  var revealAt = null;   // vị trí (toạ độ trang) của chữ vừa bôi đen, để openPanel đưa nó lên
+  // Điện thoại: khung che nửa dưới màn hình. Nếu chữ đang bàn không nằm trọn trong phần còn thấy
+  // (giữa thanh tiêu đề và mép trên của khung) thì cuộn cho nó lên khoảng 1/4 phần đó.
+  function reveal(top, bottom) {
+    if (!MOBILE.matches || !panel) return;
+    var hdr = document.querySelector("#quarto-header, .quarto-secondary-nav");
+    var hb = hdr ? Math.max(0, hdr.getBoundingClientRect().bottom) : 0;
+    var sheetTop = window.innerHeight - panel.offsetHeight;
+    var t = top - window.scrollY, b = bottom - window.scrollY;
+    if (t >= hb + 8 && b <= sheetTop - 8) return;
+    window.scrollTo({ top: top - hb - Math.max(16, (sheetTop - hb) * 0.25), behavior: "smooth" });
+  }
+  function revealEl(e) {
+    if (!e) return;
+    var r = e.getBoundingClientRect();
+    reveal(r.top + window.scrollY, Math.min(r.bottom, r.top + 80) + window.scrollY);   // đoạn dài: chỉ cần thấy phần đầu
+  }
+
   function closePanel(force) {
     if (!document.body.classList.contains("nu-panel-open")) { if (mode === "off") { peek = false; clearMarks(); } return true; }
     var draft = !force && panel && Array.prototype.some.call(panel.querySelectorAll("textarea"), function (t) { return t.value.trim(); });
@@ -1208,6 +1234,11 @@ body.nu-c-on .nu-dock .on-only { display: inline; }
     var anchorEl = (focusRoot != null && document.querySelector('mark.nu-mark[data-root="' + focusRoot + '"]')) || document.getElementById(pid);
     keepInPlace(anchorEl, function () { document.body.classList.add("nu-panel-open"); });
     labels();
+    if (MOBILE.matches) {
+      if (newQuote && revealAt) reveal(revealAt.top, revealAt.bottom);
+      else revealEl((focusRoot != null && document.querySelector('mark.nu-mark[data-root="' + focusRoot + '"]')) || document.getElementById(pid));
+    }
+    revealAt = null;
     var act = body.querySelector(".nu-thread.nu-active");
     if (act) act.scrollIntoView({ block: "nearest" });
     var ta = body.querySelector("textarea"); if (ta && newQuote) setTimeout(function () { ta.focus(); }, 300);
@@ -1314,6 +1345,7 @@ body.nu-c-on .nu-dock .on-only { display: inline; }
       selBtn.addEventListener("mousedown", function (e) { e.preventDefault(); });
       selBtn.addEventListener("click", function () {
         var cur = selection(); hideSel(); if (!cur) return;
+        revealAt = { top: cur.rect.top + window.scrollY, bottom: cur.rect.bottom + window.scrollY };
         if (cur.quote.length > MAXQ) { alert("Đoạn chữ được chọn dài quá " + MAXQ + " ký tự, bạn chọn ngắn hơn nhé."); return; }
         window.getSelection().removeAllRanges();
         if (mode === "off") peek = true;
@@ -1336,7 +1368,7 @@ body.nu-c-on .nu-dock .on-only { display: inline; }
     } else {
       selBtn.style.bottom = "";
       selBtn.style.left = (s.rect.left + s.rect.width / 2 + window.scrollX) + "px";
-      selBtn.style.top = (s.rect.top + window.scrollY - 40) + "px";
+      selBtn.style.top = (s.rect.top + window.scrollY - 50) + "px";
     }
     selBtn.style.display = "block";
   }
