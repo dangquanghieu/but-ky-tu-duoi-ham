@@ -70,6 +70,9 @@ a:hover { color: var(--nu-accent); }
   text-align: justify;
 }
 .para p { margin: 0; text-indent: 1.6em; }
+/* mốc cho mã § (.pnum, định vị tuyệt đối): chính đoạn chữ. Đoạn có chú thích bên lề bị Quarto biến
+   thành lưới trải từ mép màn hình, nên nếu lấy .para làm mốc thì mã § rơi ra ngoài mép trái. */
+.para p { position: relative; }
 main.content > .para:first-of-type p,
 .author-note p { text-indent: 0; }
 .para:target {

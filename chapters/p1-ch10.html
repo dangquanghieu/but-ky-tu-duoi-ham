@@ -741,6 +741,62 @@ body.nu-panel-open .nu-edge { display: none; }   /* mũi tên chuyển chương 
   .nu-panel { top: auto; left: 0; width: 100vw; height: 78vh; border-left: 0; border-top: 1px solid var(--nu-rule);
               box-shadow: 0 -8px 28px rgba(0,0,0,.10); transform: translateY(105%); }
 }
+
+/* Màn hình rộng (≥ 992px): khung không đè lên chữ mà nhường chỗ.
+   Khi mở khung: ẩn mục lục trái, thu vùng nội dung lại đúng bằng bề rộng khung, và thay lưới
+   của Quarto bằng một lưới gọn hơn (cột lề trái vẫn đủ chỗ cho mã § và số bình luận).
+   Selector có `body.floating` để cùng độ ưu tiên với luật của Quarto (fullcontent/slimcontent)
+   và thắng nhờ đứng sau. Áp cho mọi .page-columns, kể cả đoạn có chú thích (lưới lồng).
+   Tên các vạch lưới giữ như của Quarto vì styles.css và Quarto dùng chúng. */
+@media (min-width: 992px) {
+  body.nu-panel-open #quarto-sidebar { display: none; }
+  body.nu-panel-open #quarto-content { margin-right: 400px; }
+}
+/* ≥ 1200px: còn ≥ 800px, giữ cột lề phải cho chú thích người dịch */
+@media (min-width: 1200px) {
+  body.floating.nu-panel-open .page-columns {
+    grid-template-columns: [screen-start] 1.5em [screen-start-inset] minmax(1.5em, 1fr)
+      [page-start page-start-inset body-start-outset body-start] 1.5em
+      [body-content-start] minmax(440px, calc(800px - 3em)) [body-content-end] 1.5em
+      [body-end] 1em [body-end-outset] minmax(110px, 170px) [page-end-inset] 1em
+      [page-end] minmax(0, 1fr) [screen-end-inset] 1.5em [screen-end];
+  }
+}
+/* 992–1199px: chỉ còn 592–799px, bỏ cột lề phải; chú thích hiện xen trong bài như trên màn hẹp */
+@media (min-width: 992px) and (max-width: 1199.98px) {
+  body.floating.nu-panel-open .page-columns {
+    grid-template-columns: [screen-start] 1.5em [screen-start-inset] minmax(1.5em, 1fr)
+      [page-start page-start-inset body-start-outset body-start] 1.5em
+      [body-content-start] minmax(0, calc(800px - 3em)) [body-content-end] 1em
+      [body-end body-end-outset page-end-inset page-end] minmax(0, 1fr) [screen-end-inset] 1.5em [screen-end];
+  }
+  /* Quarto đặt `no-row-height` cho khối chú thích (chỉ cao 1em, phần còn lại tràn ra): ở cột lề thì
+     không sao, nhưng vào cột chữ thì đè lên đoạn sau. Trả lại chiều cao thật, như chế độ song ngữ. */
+  body.nu-panel-open .column-margin, body.nu-panel-open .margin-aside {
+    grid-column: body-content-start / body-content-end !important; font-size: 0.78em;
+    display: block !important; height: auto !important;
+    margin: 0.4rem 0 0.8rem; padding-top: 0.4rem; border-top: 1px solid var(--nu-rule);
+  }
+  /* song ngữ: hai cột chỉ còn ~225px mỗi cột, nên xếp bản Nga dưới bản Việt như trên màn hẹp */
+  body.bilingual.nu-panel-open main.content > .para {
+    grid-column: body-content-start / body-content-end !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    row-gap: 0.4rem;
+  }
+  body.bilingual.nu-panel-open .ru {
+    border-left: 0; padding-left: 0; border-top: 1px dashed var(--nu-rule); padding-top: 0.4rem;
+  }
+}
+/* Đoạn có chú thích là một lưới riêng trải từ mép màn hình (xem styles.css, «mã § ở lề trái»),
+   nên số bình luận (con trực tiếp của .para, định vị tuyệt đối) bị đẩy ra ngoài mép trái.
+   Phần tử định vị tuyệt đối trong lưới nhận ô lưới làm khung chứa nếu có grid-column:
+   đặt nó vào cột chữ. Không áp cho song ngữ (lưới hai cột thường, không có tên vạch) và
+   điện thoại (số bình luận ở đó không định vị tuyệt đối). */
+@media (min-width: 768px) {
+  body:not(.bilingual) .para.page-columns > .nu-count {
+    grid-column: body-content-start / body-content-end; grid-row: 1;
+  }
+}
 .nu-panel header {
   display: flex; justify-content: space-between; align-items: baseline;
   padding: 1.1rem 1.4rem 0.8rem; border-bottom: 1px solid var(--nu-rule);
@@ -992,9 +1048,9 @@ body.nu-c-on .nu-dock .on-only { display: inline; }
     } else curIdx = (curIdx + step + list.length) % list.length;
     var rid = list[curIdx], t = threads[rid];
     var mk = document.querySelector('mark.nu-mark[data-root="' + rid + '"]') || document.getElementById(t.root.para);
+    openPanel(t.root.para, rid);   // mở khung trước: bố cục đổi xong rồi mới cuộn tới
     mk.scrollIntoView({ block: "center", behavior: "smooth" });
     mk.classList.add("nu-flash"); setTimeout(function () { mk.classList.remove("nu-flash"); }, 1400);
-    openPanel(t.root.para, rid);
   }
   function labels() {
     var n = data ? data.length : 0, list = Object.keys(threads).length ? order() : [];
@@ -1087,12 +1143,25 @@ body.nu-c-on .nu-dock .on-only { display: inline; }
     foot.appendChild(hb); foot.appendChild(nav); panel.appendChild(foot);
     document.body.appendChild(panel);
   }
+  // Trên màn hình rộng, mở/đóng khung làm cột chữ đổi bề rộng và chữ xuống dòng khác đi.
+  // Giữ chỗ đang đọc: đo vị trí của `anchor` trước và sau khi đổi, rồi cuộn bù phần lệch.
+  // Tắt scroll anchoring của trình duyệt trong lúc này để không bị bù hai lần.
+  function keepInPlace(anchor, change) {
+    var root = document.documentElement, prev = root.style.overflowAnchor;
+    var y0 = anchor ? anchor.getBoundingClientRect().top : 0;
+    root.style.overflowAnchor = "none";
+    change();
+    if (anchor) { var d = anchor.getBoundingClientRect().top - y0; if (Math.abs(d) > 1) window.scrollBy({ top: d, behavior: "instant" }); }   // trang đặt scroll-behavior: smooth
+    requestAnimationFrame(function () { root.style.overflowAnchor = prev; });
+  }
   // Trả về false nếu người đọc chọn giữ lại bản nháp
   function closePanel(force) {
     if (!document.body.classList.contains("nu-panel-open")) { if (mode === "off") { peek = false; clearMarks(); } return true; }
     var draft = !force && panel && Array.prototype.some.call(panel.querySelectorAll("textarea"), function (t) { return t.value.trim(); });
     if (draft && !confirm("Bỏ bình luận đang viết dở?")) return false;
-    document.body.classList.remove("nu-panel-open", "nu-dock-hide"); current = null; labels();
+    var anchorEl = current && document.getElementById(current.para);
+    keepInPlace(anchorEl, function () { document.body.classList.remove("nu-panel-open", "nu-dock-hide"); });
+    current = null; labels();
     document.querySelectorAll(".nu-active").forEach(function (e) { e.classList.remove("nu-active"); });
     if (mode === "off") { peek = false; clearMarks(); }
     return true;
@@ -1168,7 +1237,9 @@ body.nu-c-on .nu-dock .on-only { display: inline; }
       back.addEventListener("click", function () { closePanel(); });
       body.appendChild(back);
     }
-    document.body.classList.add("nu-panel-open"); labels();
+    var anchorEl = (focusRoot != null && document.querySelector('mark.nu-mark[data-root="' + focusRoot + '"]')) || document.getElementById(pid);
+    keepInPlace(anchorEl, function () { document.body.classList.add("nu-panel-open"); });
+    labels();
     var act = body.querySelector(".nu-thread.nu-active");
     if (act) act.scrollIntoView({ block: "nearest" });
     var ta = body.querySelector("textarea"); if (ta && newQuote) setTimeout(function () { ta.focus(); }, 300);
