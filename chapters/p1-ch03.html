@@ -1007,13 +1007,14 @@ body.nu-c-on .nu-dock .on-only { display: inline; }
   tg.addEventListener("click", function () {
     if (mode === "on") return go(1);
     load().then(function () {
-      if (!(data || []).length) return toast("Chương này chưa có bình luận nào. Bôi đen một chữ để là người đầu tiên.");
+      if (!(data || []).length) return toast(EMPTY_MSG);
       setMode("on").then(function () { curIdx = -1; go(1); });
     });
   });
   // số bình luận trên nút ở chế độ đọc: tải nhẹ sau khi trang đã hiện
   setTimeout(function () { load().then(labels); }, 1200);
 
+  var EMPTY_MSG = "Chương này chưa có bình luận nào. Bôi đen một chữ để là người đầu tiên.";
   var toastEl, toastTimer;
   function toast(msg) {
     if (!toastEl) { toastEl = el("div", "nu-toast"); toastEl.setAttribute("role", "status"); document.body.appendChild(toastEl); }
@@ -1037,7 +1038,8 @@ body.nu-c-on .nu-dock .on-only { display: inline; }
   function go(step) {
     promote();
     if (!Object.keys(threads).length) render();
-    var list = order(); if (!list.length) return;
+    // Chế độ bình luận được nhớ giữa các chương: sang chương chưa có bình luận thì nút vẫn gọi tới đây.
+    var list = order(); if (!list.length) return toast(EMPTY_MSG);
     if (curIdx < 0) {   // bắt đầu từ chỗ gần nhất đang hiện hoặc ngay dưới màn hình
       var near = list.findIndex(function (rid) {
         var e = document.querySelector('mark.nu-mark[data-root="' + rid + '"]') || document.getElementById(threads[rid].root.para);
