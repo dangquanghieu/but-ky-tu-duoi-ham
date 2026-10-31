@@ -911,9 +911,18 @@ body.nu-c-on .nu-dock .on-only { display: inline; }
   }
   function norm(q) { return String(q || "").normalize("NFC").replace(/\s+/g, " ").trim(); }
 
-  function highlight(vi, quote, rootId) {
-    var f = flatten(vi), q = norm(quote), i = f.text.indexOf(q);
-    if (!q || i < 0) return false;
+  // Mọi vị trí của q trong đoạn (một cụm từ có thể lặp lại nhiều lần trong cùng một đoạn)
+  function occurrences(text, q) {
+    var out = [], i = q ? text.indexOf(q) : -1;
+    while (i >= 0) { out.push(i); i = text.indexOf(q, i + 1); }
+    return out;
+  }
+  // occ: lần xuất hiện thứ mấy (0 = lần đầu) của cụm từ trong đoạn, lưu cùng bình luận.
+  // Bình luận cũ không có occ (= 0); nếu đoạn văn đã sửa và không còn lần thứ occ thì lấy lần đầu.
+  function highlight(vi, quote, rootId, occ) {
+    var f = flatten(vi), q = norm(quote), all = occurrences(f.text, q);
+    if (!all.length) return false;
+    var i = all[occ] != null ? all[occ] : all[0];
     var segs = [], cur = null;
     for (var k = i; k < i + q.length; k++) {
       var nd = f.map[k][0], off = f.map[k][1];
@@ -1069,7 +1078,7 @@ body.nu-c-on .nu-dock .on-only { display: inline; }
       if (!vi) return;
       var n = 0;
       byPara[pid].forEach(function (rid) {
-        var t = threads[rid]; t.found = highlight(vi, t.root.quote, rid); n += 1 + t.replies.length;
+        var t = threads[rid]; t.found = highlight(vi, t.root.quote, rid, t.root.occ || 0); n += 1 + t.replies.length;
       });
       var b = el("button", "nu-count", String(n)); b.type = "button";
       b.setAttribute("aria-label", n + " bình luận ở " + paraNum(pid));
@@ -1077,7 +1086,7 @@ body.nu-c-on .nu-dock .on-only { display: inline; }
       para.appendChild(b);
     });
     labels();
-    if (current) openPanel(current.para, current.root, current.quote, current.notice);
+    if (current) openPanel(current.para, current.root, current.quote, current.notice, current.occ);
   }
 
   // ── Khung bình luận ──
@@ -1144,9 +1153,9 @@ body.nu-c-on .nu-dock .on-only { display: inline; }
     return box;
   }
 
-  function openPanel(pid, focusRoot, newQuote, notice) {
+  function openPanel(pid, focusRoot, newQuote, notice, occ) {
     if (!panel) buildPanel();
-    current = { para: pid, root: focusRoot || null, quote: newQuote || null, notice: null };
+    current = { para: pid, root: focusRoot || null, quote: newQuote || null, notice: null, occ: occ || 0 };
     var lst = order(), first = focusRoot || (byPara[pid] || [])[0];
     if (first != null) curIdx = lst.indexOf(String(first));
     panel.querySelector("header .t").textContent = paraNum(pid);
@@ -1156,7 +1165,7 @@ body.nu-c-on .nu-dock .on-only { display: inline; }
     if (notice) body.appendChild(el("p", "nu-notice", notice));
     if (newQuote) {
       body.appendChild(el("div", "nu-quote", "«" + newQuote + "»"));
-      body.appendChild(form({ para: pid, quote: newQuote }));
+      body.appendChild(form({ para: pid, quote: newQuote, occ: occ || 0 }));
     }
     var ids = byPara[pid] || [];
     if (!ids.length && !newQuote) body.appendChild(el("p", "nu-empty", "Chưa có bình luận ở đoạn này. Bôi đen một chữ hay một câu để bình luận."));
@@ -1226,7 +1235,7 @@ body.nu-c-on .nu-dock .on-only { display: inline; }
       };
       if (ownerToken) payload.owner_token = ownerToken;
       if (target.parent_id) payload.parent_id = target.parent_id;
-      else { payload.para = target.para; payload.quote = target.quote; }
+      else { payload.para = target.para; payload.quote = target.quote; payload.occ = target.occ || 0; }
       send.disabled = true; st.textContent = "Đang gửi…";
       fetch(API, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
         .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || "Lỗi " + r.status); return d; }); })
@@ -1272,7 +1281,11 @@ body.nu-c-on .nu-dock .on-only { display: inline; }
     });
     var q = norm(parts.join(""));
     if (q.length < 1) return null;
-    return { para: vi.closest(".para").id, quote: q, rect: r.getBoundingClientRect() };
+    // Đoạn chữ được chọn là lần xuất hiện thứ mấy của q trong đoạn: lấy lần gần chỗ bắt đầu chọn nhất
+    var f = flatten(vi), k = 0, all = occurrences(f.text, q), occ = 0;
+    while (k < f.map.length && r.comparePoint(f.map[k][0], f.map[k][1]) < 0) k++;
+    all.forEach(function (i, n) { if (Math.abs(i - k) < Math.abs(all[occ] - k)) occ = n; });
+    return { para: vi.closest(".para").id, quote: q, occ: occ, rect: r.getBoundingClientRect() };
   }
   function hideSel() { if (selBtn) selBtn.style.display = "none"; }
   function onSelect() {
@@ -1287,7 +1300,7 @@ body.nu-c-on .nu-dock .on-only { display: inline; }
         if (cur.quote.length > MAXQ) { alert("Đoạn chữ được chọn dài quá " + MAXQ + " ký tự, bạn chọn ngắn hơn nhé."); return; }
         window.getSelection().removeAllRanges();
         if (mode === "off") peek = true;
-        load().then(function () { current = null; render(); openPanel(cur.para, null, cur.quote); });
+        load().then(function () { current = null; render(); openPanel(cur.para, null, cur.quote, null, cur.occ); });
       });
       document.body.appendChild(selBtn);
     }
