@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs>
+<radialGradient id="glow" cx="0.31" cy="0.64" r="0.62">
+ <stop offset="0" stop-color="#7a5a2a" stop-opacity="0.75"/><stop offset="0.55" stop-color="#3a2a16" stop-opacity="0.35"/><stop offset="1" stop-color="#141210" stop-opacity="0"/></radialGradient>
+<filter id="sh" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="1.6"/></filter>
+</defs>
+<style>.cut{stroke:#141210;stroke-width:0.9;stroke-linecap:round}.shaft{stroke:#8f6a2f;stroke-width:0.9;stroke-linecap:round}</style>
+<rect fill="#141210" width="64" height="64" rx="10"/><rect fill="url(#glow)" width="64" height="64" rx="10"/>
+<g transform="rotate(-8 32 32)">
+<path fill="#ecebe7" transform="translate(6.96 54.00) scale(0.03709 -0.03709)" d="M55 0V62L104 70Q125 73 130.0 84.5Q135 96 135 121V584Q135 605 129.5 616.5Q124 628 102 632L55 639V701H570L604 511L528 491Q515 535 502.0 562.0Q489 589 473.0 604.0Q457 619 435.0 624.5Q413 630 380 630H275V407Q296 409 318.5 410.5Q341 412 371 411Q426 410 474.5 398.5Q523 387 560.0 363.5Q597 340 618.0 303.0Q639 266 639 213Q639 146 604.5 97.5Q570 49 504.0 24.5Q438 0 341 0ZM338 69Q387 69 421.5 83.5Q456 98 474.5 128.0Q493 158 493 205Q493 278 451.0 308.5Q409 339 338 339Q320 339 305 338L275 336V74Q288 71 305.5 70.0Q323 69 338 69Z"/>
+<g opacity="0.55" filter="url(#sh)" transform="translate(-3.5 2.5)"><g transform="translate(29.46 52.50) rotate(34)"><path fill="#000" d="M0 -9.68 C-9.9 -17.6 -10.35 -35.2 1.3499999999999999 -44 C4.95 -33.0 4.05 -18.48 0 -9.68 Z"/></g></g>
+<g transform="translate(29.46 52.50) rotate(30)" ><path fill="#d2ae6a" d="M0 -9.68 C-9.9 -17.6 -10.35 -35.2 1.3499999999999999 -44 C4.95 -33.0 4.05 -18.48 0 -9.68 Z"/><path fill="#d2ae6a" d="M0 0 L-1.6199999999999999 -10.559999999999999 H1.6199999999999999 Z"/><path class="cut" d="M-8.549999999999999 -18.48 L-4.05 -16.72"/><path class="cut" d="M-8.549999999999999 -23.76 L-4.05 -22.0"/><path class="cut" d="M-8.549999999999999 -29.039999999999996 L-4.05 -27.28"/><path class="shaft" d="M0 0 Q0.45 -22.0 1.3499999999999999 -44" fill="none"/></g>
+</g></svg>
