@@ -176,6 +176,15 @@ body.bilingual .vi .column-margin {
 .author-note { font-size: 0.92em; }   /* em, không rem: để theo cỡ chữ Aa của main.content */
 .author-note .signature { display: block; text-align: right; font-style: italic; margin-top: 0.6rem; }
 
+/* ── Đề từ (đầu Phần II) ─────────────────────────────────── */
+/* Câu thơ là line block của Pandoc (div.line-block, mỗi dòng một <br>): không căn đều hai bên.
+   Bản Việt lùi vào bên phải như đề từ trong sách in; ở chế độ song ngữ và màn hẹp thì không lùi. */
+.epigraph { font-size: 0.92em; text-align: left; margin-bottom: 2rem; }
+.epigraph .line-block { margin: 0; }
+.epigraph .signature { display: block; text-align: right; font-style: italic; margin-top: 0.6rem; }
+body:not(.bilingual) .epigraph > .vi { margin-left: 22%; }
+@media (max-width: 767.98px) { body:not(.bilingual) .epigraph > .vi { margin-left: 8%; } }
+
 /* ── Chú thích bên lề ─────────────────────────────────────── */
 .column-margin, .margin-aside { font-size: 0.78rem; line-height: 1.55; color: var(--nu-muted); }
 /* màn hẹp: chú thích hiện xen trong bài, nên theo cỡ chữ Aa (em); máy tính: giữ cỡ cố định ở cột lề */
